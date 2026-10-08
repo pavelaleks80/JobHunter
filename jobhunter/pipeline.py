@@ -13,7 +13,7 @@ import time
 from collections import Counter
 from datetime import datetime
 
-from . import sources
+from . import cover, dedup, sources
 from .matching import Matcher, extract
 from .net import session
 from .profile.schema import load_profile
@@ -118,6 +118,9 @@ def run(settings, send_mail=True, all_new=False, echo=print):
     for v in rows:
         v["is_new"] = all_new or (v["source"], v["id"]) not in known
         v["applied"] = db.applied_status(v, index, settings.matching.fuzzy_applied)
+    rows, n_dup = dedup.merge(rows)
+    if n_dup:
+        echo(f"Дубли с других площадок склеены: {n_dup}")
 
     fetched, failed = _match_all(s, con, rows, matcher, settings, run_date, log)
     echo(f"Описания: загружено {fetched}, из кэша {len(rows) - fetched - failed}, не удалось {failed}")
@@ -131,15 +134,19 @@ def run(settings, send_mail=True, all_new=False, echo=print):
     cnt = Counter(v["match"]["verdict"] for v in rows if not v["applied"])
     echo("Без отклика: " + ", ".join(f"{k} {cnt.get(k, 0)}" for k in VERDICT_ORDER))
 
+    for v in rows:
+        v["cover"] = cover.existing(settings, v["source"], v["id"])
     funnel = db.funnel(con)
-    path = write_excel(rows, status, run_dt, settings.output_dir, funnel)
+    salaries = db.salary_stats(con, target=settings.salary.target)
+    path = write_excel(rows, status, run_dt, settings.output_dir, funnel, salaries, settings.salary.target)
     trk = excel_marks.export(con, settings.tracker_path)
     echo(f"Excel: {path}\nТрекер: {trk}")
     log.info("rows=%d %s excel=%s", len(rows), dict(cnt), path)
 
     if send_mail and settings.email.enabled:
         from .notify.email import send
-        html, (n, n_new) = build_html(rows, status, run_dt, settings.email.top_n, settings.email.top_n_mail_source, funnel)
+        html, (n, n_new) = build_html(rows, status, run_dt, settings.email.top_n, settings.email.top_n_mail_source,
+                                      funnel, salaries, settings.salary.target)
         bad = [k for k, (ok, _) in status.items() if not ok]
         subj = f"Вакансии: {n} подходящих, из них новых {n_new} ({run_dt:%d.%m.%Y})" + (f" ⚠ {', '.join(bad)}" if bad else "")
         ok, msg = send(settings, subj, html, path)

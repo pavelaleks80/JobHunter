@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -44,10 +44,20 @@ STATUS_RU = {"applied": "Откликнулся", "viewed": "Ответили", 
              "rejected": "Отказ", "ignored": "Не интересно"}
 
 
+# Колонки, добавленные после 0.1.0: роль, верх вилки на руки (для аналитики зарплат), ссылка на «основную» копию дубля
+_MIGRATIONS = {"vacancies": [("role", "TEXT"), ("net_top", "REAL"), ("dup_of", "TEXT")]}
+
+
 def connect(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(path)
     con.executescript(SCHEMA)
+    for table, cols in _MIGRATIONS.items():
+        have = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+        for name, typ in cols:
+            if name not in have:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {name} {typ}")
+    con.commit()
     return con
 
 
@@ -84,24 +94,76 @@ def app_key(url: str | None, title: str = "", company: str = "") -> str:
 
 
 # ---------------------------------------------------------------- вакансии
+_VAC_COLS = ("source", "id", "title", "company", "url", "published", "sal_from", "sal_to", "currency", "gross",
+             "score", "why", "verdict", "fit", "first_seen", "last_seen", "role", "net_top", "dup_of")
+
+
 def upsert_vacancies(con, rows, run_date: str) -> set:
-    """Сохранить вакансии. -> ключи (source, id), увиденные впервые."""
+    """Сохранить вакансии (и их дубли с других площадок, v["dups"]). -> ключи (source, id), увиденные впервые."""
     known = {(s, i) for s, i in con.execute("SELECT source, id FROM vacancies")}
     new = set()
-    for r in rows:
+
+    def one(r, dup_of=None):
         key = (r["source"], r["id"])
         m = r.get("match") or {}
         if key not in known:
             new.add(key)
-            con.execute("INSERT INTO vacancies VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (r["source"], r["id"], r["title"], r["company"], r["url"], r["published"], r["sal_from"],
-                         r["sal_to"], r["currency"], None if r["gross"] is None else int(r["gross"]), r["score"],
-                         r["why"], m.get("verdict"), m.get("fit"), run_date, run_date))
+            known.add(key)
+            vals = (r["source"], r["id"], r["title"], r["company"], r["url"], r["published"], r["sal_from"],
+                    r["sal_to"], r["currency"], None if r["gross"] is None else int(r["gross"]), r.get("score"),
+                    r.get("why"), m.get("verdict"), m.get("fit"), run_date, run_date, r.get("role"),
+                    r.get("net_top"), dup_of)
+            con.execute(f"INSERT INTO vacancies ({', '.join(_VAC_COLS)}) VALUES ({', '.join('?' * len(_VAC_COLS))})", vals)
         else:
-            con.execute("UPDATE vacancies SET last_seen=?, score=?, why=?, verdict=?, fit=? WHERE source=? AND id=?",
-                        (run_date, r["score"], r["why"], m.get("verdict"), m.get("fit"), *key))
+            con.execute("UPDATE vacancies SET last_seen=?, score=?, why=?, verdict=?, fit=?, role=?, net_top=?, dup_of=? "
+                        "WHERE source=? AND id=?", (run_date, r.get("score"), r.get("why"), m.get("verdict"),
+                                                    m.get("fit"), r.get("role"), r.get("net_top"), dup_of, *key))
+
+    for r in rows:
+        one(r)
+        for d in r.get("dups") or []:
+            one(d, f"{r['source']}:{r['id']}")
     con.commit()
     return new
+
+
+def find_vacancy(con, url: str) -> dict | None:
+    """Вакансия из базы по ссылке (с любыми параметрами)."""
+    u = norm_url(url)
+    cols = ", ".join(_VAC_COLS)
+    row = con.execute(f"SELECT {cols} FROM vacancies WHERE url=? OR url=? OR url LIKE ?", (url, u, u + "?%")).fetchone()
+    return dict(zip(_VAC_COLS, row, strict=True)) if row else None
+
+
+def salary_stats(con, days: int = 90, target: float | None = None) -> dict:
+    """Аналитика зарплат по увиденным вакансиям за `days` дней (верх вилки на руки, ₽; дубли не учитываются).
+    -> {"roles": [(роль, n, p25, медиана, p75)], "weeks": [(неделя, n, медиана)], "shown": доля с вилкой,
+        "above_target": доля вилок ≥ цели}."""
+    since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    rows = con.execute("SELECT role, net_top, first_seen FROM vacancies WHERE dup_of IS NULL AND last_seen >= ?",
+                       (since,)).fetchall()
+    with_sal = [(r, n, d) for r, n, d in rows if n]
+
+    def q(xs, p):
+        xs = sorted(xs)
+        return xs[min(len(xs) - 1, int(round(p * (len(xs) - 1))))] if xs else None
+
+    by_role: dict[str, list[float]] = {}
+    by_week: dict[str, list[float]] = {}
+    for role, net, first in with_sal:
+        by_role.setdefault(role or "—", []).append(net)
+        try:
+            y, w, _ = datetime.strptime(first[:10], "%Y-%m-%d").isocalendar()
+            by_week.setdefault(f"{y}-W{w:02d}", []).append(net)
+        except (TypeError, ValueError):
+            pass
+    roles = sorted(((r, len(x), q(x, .25), q(x, .5), q(x, .75)) for r, x in by_role.items()), key=lambda t: -t[1])
+    weeks = [(w, len(x), q(x, .5)) for w, x in sorted(by_week.items())]
+    nets = [n for _, n, _ in with_sal]
+    return {"roles": roles, "weeks": weeks, "total": len(rows), "with_salary": len(nets),
+            "shown": round(100 * len(nets) / len(rows)) if rows else None,
+            "median": q(nets, .5),
+            "above_target": round(100 * sum(n >= target for n in nets) / len(nets)) if nets and target else None}
 
 
 def known_keys(con) -> set:

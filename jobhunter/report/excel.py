@@ -1,7 +1,7 @@
 """
 excel.py — output/Вакансии_ДДММГГ.xlsx.
 
-Листы: «К отклику» (без отклика, 🆕 — новые), «Все», «Пробелы резюме», «Воронка», «Источники».
+Листы: «К отклику» (без отклика, 🆕 — новые), «Все», «Пробелы резюме», «Зарплаты», «Воронка», «Источники».
 Первая колонка «Статус» — выпадающий список; отметки собираются в базу при следующем запуске.
 """
 from __future__ import annotations
@@ -13,6 +13,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
+from ..dedup import also_text
 from ..tracker import db
 from .common import salary_text, why_only
 
@@ -20,7 +21,8 @@ VERDICT_FILL = {"Подходит": "C6EFCE", "Частично": "FFEB9C", "П�
 COLS = [("Статус", 14), ("Вердикт", 15), ("Соотв., %", 9), ("Балл", 7), ("Новая", 7), ("Вакансия", 46),
         ("Компания", 24), ("Зарплата", 22), ("Стоп-факторы / критичные пробелы", 34), ("Не хватает", 60),
         ("Частично", 50), ("Есть, но нет в резюме", 45), ("Совпало", 60), ("Не распознано", 40), ("Опубл.", 11),
-        ("Источник", 10), ("Ключевые слова", 24), ("Почему балл", 60), ("Ссылка", 40)]
+        ("Источник", 10), ("Также на", 14), ("Письмо", 10), ("Ключевые слова", 24), ("Почему балл", 60),
+        ("Ссылка", 40)]
 CHOICES = '"Откликнулся,Не интересно,Ответили,Приглашение,Отказ,Оффер"'
 
 
@@ -35,7 +37,8 @@ def _row(v):
     return [db.STATUS_RU.get(v.get("applied"), "") or None, m["verdict"], m["fit"], v["score"],
             "🆕" if v["is_new"] else "", v["title"], v["company"], salary_text(v), "\n".join(stop), _lines(m["miss"]),
             _lines(m["partial"]), _lines(m["gap"]), _lines(m["have"]), _lines(m["unknown"]), v["published"],
-            SRC_NAME.get(v["source"], v["source"]), v["tags"], v["why"], v["url"]]
+            SRC_NAME.get(v["source"], v["source"]), also_text(v, SRC_NAME) or None, "готово" if v.get("cover") else None,
+            v["tags"], v["why"], v["url"]]
 
 
 def _sheet(ws, rows):
@@ -60,6 +63,12 @@ def _sheet(ws, rows):
                 c.hyperlink = v["url"]
                 if name == "Ссылка":
                     c.font = Font(color="0563C1", underline="single")
+            elif name == "Также на" and v.get("dups"):
+                c.hyperlink = v["dups"][0]["url"]
+                c.font = Font(color="0563C1", underline="single")
+            elif name == "Письмо" and v.get("cover"):
+                c.hyperlink = v["cover"].resolve().as_uri()
+                c.font = Font(color="0563C1", underline="single")
         if v.get("applied"):
             for j in range(2, len(COLS) + 1):
                 ws.cell(row=i, column=j).font = Font(color="999999")
@@ -87,7 +96,34 @@ def _gaps_sheet(ws, rows):
     ws.column_dimensions["B"].width = 10
 
 
-def write_excel(rows, status, run_dt, output_dir, funnel=None):
+def _k(x):
+    return round(x / 1000) if x else None
+
+
+def _salary_sheet(ws, st, target=None):
+    ws.append(["Зарплаты по увиденным вакансиям за 90 дней — верх вилки на руки, тыс. ₽ (дубли не учитываются)"])
+    ws.cell(row=1, column=1).font = Font(bold=True)
+    ws.append([f"Вакансий {st['total']}, с вилкой {st['with_salary']} ({st['shown'] or 0}%), медиана {_k(st['median'])}"
+               + (f"; вилку ≥ вашей цели {_k(target)} дают {st['above_target']}%" if st.get("above_target") is not None
+                  else "")])
+    ws.append([])
+    ws.append(["Роль", "Вакансий с вилкой", "25%", "Медиана", "75%"])
+    for c in ws[ws.max_row]:
+        c.font = Font(bold=True)
+    for role, n, p25, med, p75 in st["roles"]:
+        ws.append([role, n, _k(p25), _k(med), _k(p75)])
+    ws.append([])
+    ws.append(["Неделя (по дате первого появления)", "Вакансий с вилкой", "Медиана"])
+    for c in ws[ws.max_row]:
+        c.font = Font(bold=True)
+    for w, n, med in st["weeks"]:
+        ws.append([w, n, _k(med)])
+    ws.column_dimensions["A"].width = 40
+    for col in "BCDE":
+        ws.column_dimensions[col].width = 16
+
+
+def write_excel(rows, status, run_dt, output_dir, funnel=None, salaries=None, target=None):
     from . import SRC_NAME
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / f"Вакансии_{run_dt:%d%m%y}.xlsx"
@@ -97,6 +133,8 @@ def write_excel(rows, status, run_dt, output_dir, funnel=None):
     _sheet(ws, [v for v in rows if not v.get("applied")])
     _sheet(wb.create_sheet("Все"), rows)
     _gaps_sheet(wb.create_sheet("Пробелы резюме"), rows)
+    if salaries and salaries["total"]:
+        _salary_sheet(wb.create_sheet("Зарплаты"), salaries, target)
     if funnel:
         f = wb.create_sheet("Воронка")
         f.append(["Всего откликов в базе", funnel["total"]])

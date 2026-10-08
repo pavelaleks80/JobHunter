@@ -43,6 +43,7 @@ class ScoringCfg(BaseModel):
     boosts_cap: int = 30
     target_companies: list[str] = Field(default_factory=list)
     target_company_bonus: int = 10
+    blacklist_companies: list[str] = Field(default_factory=list)   # подстроки: такие компании не показываем
     fresh_points: list[tuple[int, int]] = Field(default_factory=lambda: [(1, 10), (3, 7), (7, 4)])
 
 
@@ -94,6 +95,14 @@ class LLMCfg(BaseModel):
     timeout: int = 120
 
 
+class CoverCfg(BaseModel):
+    """Сопроводительные письма (jobhunter cover)."""
+    words: int = 170                   # примерная длина
+    tone: str = "деловой, живой, без канцелярита и штампов"
+    signature: str = ""                # подпись в конце (имя, телефон, Telegram); пусто — без подписи
+    extra: str = ""                    # дополнительные пожелания к письму
+
+
 class MatchingCfg(BaseModel):
     mode: Literal["rules", "llm", "hybrid"] = "rules"
     fit_ok: int = 75
@@ -115,6 +124,7 @@ class Settings(BaseModel):
     email: EmailCfg = EmailCfg()
     llm: LLMCfg = LLMCfg()
     matching: MatchingCfg = MatchingCfg()
+    cover: CoverCfg = CoverCfg()
     env: dict[str, str] = Field(default_factory=dict, exclude=True)
 
     # ------------------------------------------------------------ пути
@@ -143,6 +153,10 @@ class Settings(BaseModel):
         return self.workspace / self.resume_dir
 
     @property
+    def covers_dir(self) -> Path:
+        return self.workspace / "covers"
+
+    @property
     def profile_path(self) -> Path:
         return self.workspace / self.profile_file
 
@@ -151,7 +165,7 @@ class Settings(BaseModel):
         return self.workspace / self.tracker_file
 
     def ensure_dirs(self) -> None:
-        for d in (self.data_dir, self.output_dir, self.log_dir, self.cache_dir, self.resume_path):
+        for d in (self.data_dir, self.output_dir, self.log_dir, self.cache_dir, self.resume_path, self.covers_dir):
             d.mkdir(parents=True, exist_ok=True)
 
     def secret(self, env_name: str, default: str = "") -> str:

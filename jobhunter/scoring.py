@@ -19,6 +19,7 @@ class Scorer:
         self._excl = [re.compile(p, re.I) for p in cfg.exclude]
         self._boosts = [(re.compile(b.pattern, re.I), b.points, b.label or b.pattern) for b in cfg.boosts]
         self._companies = [c.lower() for c in cfg.target_companies]
+        self._black = [c.lower() for c in cfg.blacklist_companies]
 
     @staticmethod
     def _norm(t: str) -> str:
@@ -42,8 +43,14 @@ class Scorer:
             return None
         return top if v.get("gross") is False else top * (1 - self.sal.tax)
 
+    def blacklisted(self, company: str) -> bool:
+        c = (company or "").lower()
+        return bool(c) and any(b in c for b in self._black)
+
     def score(self, v: dict, today: date | None = None):
         today = today or date.today()
+        if self.blacklisted(v.get("company", "")):
+            return None
         role = self.role_of(v["title"])
         if role is None:
             return None

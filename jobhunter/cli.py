@@ -6,6 +6,8 @@ cli.py — команда `jobhunter` (или `python -m jobhunter`).
   jobhunter run                  собрать вакансии, сверить с профилем, Excel + письмо  (--no-email, --all-new)
   jobhunter applied <url> [...]  отметить отклик (--status invited|rejected|offer|ignored|viewed)
   jobhunter stats                воронка откликов
+  jobhunter salaries             зарплаты по ролям и неделям (верх вилки на руки)
+  jobhunter cover <url> [...]    сопроводительное письмо под вакансию (--fit N — для N лучших без отклика)
   jobhunter check                проверить настройки: профиль, почта, LLM, доступность сайтов
 Рабочая папка: --workspace или переменная JOBHUNTER_WORKSPACE (по умолчанию ./workspace).
 """
@@ -114,6 +116,78 @@ def cmd_stats(args):
     return 0
 
 
+def cmd_salaries(args):
+    from .tracker import db
+    s = load_settings(args.workspace)
+    con = db.connect(s.db_path)
+    st = db.salary_stats(con, days=args.days, target=s.salary.target)
+    k = lambda x: f"{round(x / 1000)}" if x else "—"      # noqa: E731
+    print(f"Вакансий за {args.days} дн.: {st['total']}, с вилкой {st['with_salary']} ({st['shown'] or 0}%), "
+          f"медиана верха вилки на руки {k(st['median'])} тыс.")
+    if st["above_target"] is not None:
+        print(f"Вилку ≥ вашей цели {k(s.salary.target)} тыс. дают {st['above_target']}% вакансий")
+    print(f"\n{'Роль':<28}{'n':>5}{'25%':>8}{'медиана':>9}{'75%':>8}")
+    for role, n, p25, med, p75 in st["roles"]:
+        print(f"{role[:27]:<28}{n:>5}{k(p25):>8}{k(med):>9}{k(p75):>8}")
+    if st["weeks"]:
+        print("\nПо неделям: " + ", ".join(f"{w} — {k(m)} (n={n})" for w, n, m in st["weeks"][-8:]))
+    return 0
+
+
+def cmd_cover(args):
+    from . import cover
+    from .llm import LLMClient, LLMError
+    from .matching import Matcher
+    from .net import session
+    from .profile.extract_text import extract, find_resume
+    from .profile.schema import load_profile
+    from .tracker import db
+    s = load_settings(args.workspace)
+    s.ensure_dirs()
+    con = db.connect(s.db_path)
+    urls = list(args.urls)
+    if args.fit:
+        index = db.applied_index(con)
+        rows = con.execute("SELECT url, title, company, source, id FROM vacancies WHERE dup_of IS NULL AND "
+                           "verdict IN ('Подходит', 'Частично') AND source != 'hh' "
+                           "ORDER BY verdict = 'Подходит' DESC, fit DESC, score DESC, last_seen DESC").fetchall()
+        for url, title, company, source, vid in rows:
+            if len(urls) >= args.fit:
+                break
+            if cover.existing(s, source, vid) or db.applied_status({"url": url, "title": title, "company": company}, index):
+                continue
+            urls.append(url)
+    if not urls:
+        print("Нет вакансий: укажите ссылки или --fit N (берутся «Подходит»/«Частично» без отклика и без письма)")
+        return 1
+    try:
+        client = LLMClient.from_settings(s)
+        profile = load_profile(s.profile_path)
+        resume_text = extract(find_resume(s.resume_path))
+    except (LLMError, FileNotFoundError, ValueError) as e:
+        print(f"[!!] {e}")
+        return 1
+    matcher = Matcher(profile, s.matching)
+    sess = session(s.cache_dir, s.user_agent)
+    code = 0
+    for url in urls:
+        try:
+            vac, detail = cover.vacancy_for(con, s, sess, url, args.title or "", args.company or "")
+            if cover.existing(s, vac["source"], vac["id"]) and not args.force:
+                print(f"· уже есть: {cover.cover_path(s, vac['source'], vac['id'])} (--force — переписать)")
+                continue
+            text, match = cover.make(client, s, profile, matcher, resume_text, vac, detail)
+            p = cover.write(s, vac, text, match)
+            print(f"✓ {vac.get('title') or url} → {p}")
+        except (LLMError, ValueError) as e:
+            print(f"[!!] {url}: {e}")
+            code = 1
+        except Exception as e:      # noqa: BLE001 — сеть/сайт: остальные письма всё равно пишем
+            print(f"[!!] {url}: {str(e)[:200]}")
+            code = 1
+    return code
+
+
 def cmd_check(args):
     from .net import session
     from .profile.schema import load_profile
@@ -179,6 +253,14 @@ def main(argv=None):
     a.add_argument("--title")
     a.add_argument("--company")
     sub.add_parser("stats", help="воронка откликов")
+    sa = sub.add_parser("salaries", help="аналитика зарплат")
+    sa.add_argument("--days", type=int, default=90)
+    c = sub.add_parser("cover", help="сопроводительное письмо")
+    c.add_argument("urls", nargs="*")
+    c.add_argument("--fit", type=int, default=0, help="написать для N лучших вакансий без отклика")
+    c.add_argument("--force", action="store_true", help="переписать готовое письмо")
+    c.add_argument("--title")
+    c.add_argument("--company")
     sub.add_parser("check", help="проверить настройки")
     args = ap.parse_args(argv)
     args.workspace = (args.workspace or default_workspace()).resolve()
@@ -188,7 +270,7 @@ def main(argv=None):
         except AttributeError:
             pass
     return {"init": cmd_init, "profile": cmd_profile, "run": cmd_run, "applied": cmd_applied,
-            "stats": cmd_stats, "check": cmd_check}[args.cmd](args)
+            "stats": cmd_stats, "salaries": cmd_salaries, "cover": cmd_cover, "check": cmd_check}[args.cmd](args)
 
 
 if __name__ == "__main__":

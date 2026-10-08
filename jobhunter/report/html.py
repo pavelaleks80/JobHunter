@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import Counter
 from html import escape
 
+from ..dedup import also_text
 from .common import salary_text, why_only
 
 _STYLE = """<style>
@@ -17,7 +18,7 @@ th{background:#f4f6f8}.s{font-weight:bold;text-align:center}.mut{color:#888;font
 </style>"""
 
 
-def build_html(rows, status, run_dt, top_n=60, top_n_mail=30, funnel=None):
+def build_html(rows, status, run_dt, top_n=60, top_n_mail=30, funnel=None, salaries=None, target=None):
     from . import SRC_NAME, VERDICT_ORDER
     active = [v for v in rows if not v.get("applied")]
     site = [v for v in active if v["source"] != "hh"]
@@ -46,9 +47,11 @@ def build_html(rows, status, run_dt, top_n=60, top_n_mail=30, funnel=None):
                 notes += "<br><b>Дописать в резюме:</b> " + escape("; ".join(dict.fromkeys(gap)))
             cls = "v0" if m["verdict"] == "Подходит" else "v1"
             badge = "<b>🆕</b> " if v["is_new"] else ""
+            also = also_text(v, SRC_NAME)
+            extra = (f" · также: {escape(also)}" if also else "") + (" · ✉ письмо готово" if v.get("cover") else "")
             h.append(f"<tr class='{cls}'><td class='s'>{m['fit']}%<br><span class='mut'>{m['verdict']}</span></td>"
                      f"<td>{badge}<a href='{escape(v['url'])}'>{escape(v['title'])}</a><br>{escape(v['company'])}<br>"
-                     f"<span class='mut'>{SRC_NAME.get(v['source'])} · {escape(v['published'])} · балл {v['score']}</span></td>"
+                     f"<span class='mut'>{SRC_NAME.get(v['source'])} · {escape(v['published'])} · балл {v['score']}{extra}</span></td>"
                      f"<td>{escape(salary_text(v))}</td><td class='mut'>{notes}</td></tr>")
         h.append("</table>")
         if len(fit) > len(top):
@@ -75,6 +78,13 @@ def build_html(rows, status, run_dt, top_n=60, top_n_mail=30, funnel=None):
                  f"{b.get('invited', 0)}, офферов {b.get('offer', 0)}, отказов {b.get('rejected', 0)}"
                  + (f"; медиана ответа {funnel['median_wait']} дн." if funnel["median_wait"] is not None else "")
                  + f". Без ответа 7+ дней: {len(funnel['silent_7d'])}.</p>")
+
+    if salaries and salaries.get("with_salary"):
+        roles = "; ".join(f"{escape(r)} — {round(m / 1000)} тыс. (n={n})" for r, n, _, m, _ in salaries["roles"][:4] if m)
+        tgt = (f" Вилку ≥ вашей цели {round(target / 1000)} тыс. дают {salaries['above_target']}% вакансий."
+               if target and salaries.get("above_target") is not None else "")
+        h.append(f"<h4>Зарплаты</h4><p>Медиана верха вилки на руки за 90 дней: {roles}.{tgt} "
+                 f"<span class='mut'>Вилку указывают {salaries['shown']}% вакансий; подробнее — лист «Зарплаты».</span></p>")
 
     h.append("<h4>Источники</h4><ul>")
     for k, (ok, msg) in status.items():
