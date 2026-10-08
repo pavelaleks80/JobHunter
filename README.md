@@ -95,6 +95,8 @@ jobhunter init
 
 1. Положите резюме (`.pdf`, `.docx` или `.txt`) в `workspace/resume/`.
 2. Заполните `workspace/.env`: ключ LLM, почту для отправки отчёта и (по желанию) почту для чтения писем hh и Хабра.
+   Для почты нужен не обычный пароль, а **пароль приложения** — как его получить в Gmail, Mail.ru и Яндексе, пошагово:
+   [docs/app-passwords.md](docs/app-passwords.md).
 3. Постройте профиль и просмотрите его: `jobhunter profile`.
 4. Поправьте роли, зарплату и ключевые слова в `workspace/config.yaml`.
 5. Проверьте настройки и запустите: `jobhunter check`, затем `jobhunter run`.
@@ -139,6 +141,7 @@ jobhunter init
 
 - [Установка и настройка](docs/setup.md)
 - [Профиль кандидата и как работает сверка](docs/profile.md)
+- [Пароль приложения для почты (Gmail, Mail.ru, Яндекс)](docs/app-passwords.md)
 - [Почта: подборки hh и отклики](docs/mail.md)
 - [Сопроводительные письма, дубли и зарплаты](docs/extras.md)
 - [Ежедневный запуск](docs/scheduling.md)

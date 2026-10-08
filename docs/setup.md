@@ -41,9 +41,11 @@ workspace/
 | Переменная | Зачем | Где взять |
 |---|---|---|
 | `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` | построить профиль из резюме; ИИ-судья | [OpenRouter](https://openrouter.ai/keys), [DeepSeek](https://platform.deepseek.com), OpenAI или любой OpenAI-совместимый сервер |
-| `EMAIL_SENDER_LOGIN`, `EMAIL_SENDER_PASSWORD`, `SMTP_SERVER`, `SMTP_PORT` | отправить отчёт | Mail.ru / Яндекс: «пароль для внешних приложений»; Gmail: пароль приложения |
+| `EMAIL_SENDER_LOGIN`, `EMAIL_SENDER_PASSWORD`, `SMTP_SERVER`, `SMTP_PORT` | отправить отчёт | [пароль приложения](app-passwords.md) — пошагово для Gmail, Mail.ru, Яндекса |
 | `JOBHUNTER_RECEIVER` | кому слать отчёт | ваш адрес |
-| `IMAP_USER`, `IMAP_PASSWORD` | читать письма hh и Хабра | Gmail: myaccount.google.com → Безопасность → Пароли приложений |
+| `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_SERVER` | читать письма hh и Хабра | [пароль приложения](app-passwords.md) |
+
+Обычный пароль от почты не подойдёт — нужен **пароль приложения**: [docs/app-passwords.md](app-passwords.md).
 
 Профиль строится один раз — это несколько центов на OpenRouter. Пароли приложений безопаснее обычного пароля:
 их можно отозвать, не меняя основной.
@@ -85,5 +87,5 @@ jobhunter run --no-email
 
 - **Хабр Карьера: «не отвечает».** Сайт часто недоступен через VPN — запускайте без него.
 - **`[X509] PEM lib`.** Битый блок в certifi; JobHunter сам собирает очищенный бандл в `workspace/.cache`.
-- **Письмо не отправляется.** `jobhunter check` покажет, какой переменной не хватает; для Mail.ru нужен пароль
-  для внешних приложений, а не пароль от ящика.
+- **Письмо не отправляется.** `jobhunter check` покажет, какой переменной не хватает; нужен пароль
+  приложения, а не пароль от ящика — см. [app-passwords.md](app-passwords.md), раздел «Если что-то не так».

@@ -19,23 +19,22 @@ getmatch об откликах писем не присылает — такие
 
 ## Как подключить (Gmail)
 
-1. Включите двухэтапную аутентификацию: myaccount.google.com → Безопасность.
-2. Создайте пароль приложения: myaccount.google.com → Безопасность → **Пароли приложений** → 16 символов.
-3. Включите IMAP: Gmail → Настройки → Пересылка и POP/IMAP.
-4. В `workspace/.env`:
+1. Получите **пароль приложения** Google — пошагово, с разбором частых ошибок:
+   [app-passwords.md](app-passwords.md).
+2. В `workspace/.env`:
    ```
    IMAP_SERVER=imap.gmail.com
    IMAP_USER=you@gmail.com
    IMAP_PASSWORD=abcd efgh ijkl mnop
    ```
-5. В `workspace/config.yaml`: `sources.mail.enabled: true`.
-6. На hh.ru настройте подписку на вакансии (автопоиск) с отправкой на эту почту.
-7. `jobhunter check` — строка «почта IMAP: вход OK».
+3. В `workspace/config.yaml`: `sources.mail.enabled: true`.
+4. На hh.ru настройте подписку на вакансии (автопоиск) с отправкой на эту почту.
+5. `jobhunter check` — строка «почта IMAP: вход OK».
 
 Если письма площадок фильтрами уходят из «Входящих» в другие папки, укажите `sources.mail.folder: ALL` —
 JobHunter сам найдёт папку «Вся почта» (её имя на IMAP зависит от языка интерфейса Gmail).
 
-Mail.ru и Яндекс работают так же: `imap.mail.ru` / `imap.yandex.ru` и пароль для внешних приложений.
+Mail.ru и Яндекс работают так же: `imap.mail.ru` / `imap.yandex.ru` и пароль приложения — см. [app-passwords.md](app-passwords.md).
 
 ## Безопасность
 

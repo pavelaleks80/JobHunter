@@ -16,7 +16,8 @@ def send(settings, subject: str, html: str, attach_path=None):
     c = settings.email
     server = settings.secret(c.smtp_server_env, "smtp.mail.ru")
     port = int(settings.secret(c.smtp_port_env, "465") or 465)
-    login, pwd = settings.secret(c.login_env), settings.secret(c.password_env)
+    login = settings.secret(c.login_env)
+    pwd = settings.secret(c.password_env).replace(" ", "")   # пароль приложения Google показывается группами через пробел
     to = settings.secret(c.receiver_env) or login
     if not (login and pwd):
         return False, f"нет {c.login_env}/{c.password_env} в workspace/.env — письмо не отправлено"
