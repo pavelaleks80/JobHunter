@@ -1,0 +1,24 @@
+# Данные пользователя: резюме, профиль, база, отчёты, секреты
+workspace/*
+!workspace/.gitkeep
+.env
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Excel lock files
+~$*.xlsx
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

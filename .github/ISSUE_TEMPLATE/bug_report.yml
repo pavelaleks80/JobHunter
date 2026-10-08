@@ -1,0 +1,29 @@
+name: Ошибка
+description: Что-то работает не так
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "⚠️ Не прикладывайте `.env`, резюме, `profile.yaml`, базу и отчёты — в них личные данные."
+  - type: textarea
+    id: what
+    attributes:
+      label: Что случилось
+      description: Что делали, что ожидали, что получили
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: Вывод `jobhunter check`
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: Фрагмент workspace/logs/jobhunter.log
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: ОС и версия Python
+      placeholder: Windows 11, Python 3.12

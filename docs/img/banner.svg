@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f2027"/>
+      <stop offset="0.55" stop-color="#203a43"/>
+      <stop offset="1" stop-color="#2c5364"/>
+    </linearGradient>
+    <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" rx="24" fill="url(#bg)"/>
+  <!-- прицел -->
+  <g transform="translate(160,150)" fill="none" stroke="url(#acc)" stroke-width="8" stroke-linecap="round">
+    <circle r="78"/>
+    <circle r="44" stroke-width="6" opacity="0.8"/>
+    <circle r="10" fill="#4ade80" stroke="none"/>
+    <line x1="0" y1="-112" x2="0" y2="-62"/>
+    <line x1="0" y1="62" x2="0" y2="112"/>
+    <line x1="-112" y1="0" x2="-62" y2="0"/>
+    <line x1="62" y1="0" x2="112" y2="0"/>
+  </g>
+  <text x="320" y="138" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="84" font-weight="700" fill="#ffffff">JobHunter</text>
+  <text x="324" y="190" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="30" fill="#cbd5e1">Вакансии под ваше резюме — каждое утро в почте</text>
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="20" fill="#0f2027" font-weight="600">
+    <rect x="324" y="216" width="122" height="36" rx="18" fill="#4ade80"/><text x="385" y="241" text-anchor="middle">getmatch</text>
+    <rect x="458" y="216" width="160" height="36" rx="18" fill="#4ade80"/><text x="538" y="241" text-anchor="middle">Хабр Карьера</text>
+    <rect x="630" y="216" width="132" height="36" rx="18" fill="#4ade80"/><text x="696" y="241" text-anchor="middle">hh (почта)</text>
+    <rect x="774" y="216" width="200" height="36" rx="18" fill="#22d3ee"/><text x="874" y="241" text-anchor="middle">сверка с резюме</text>
+    <rect x="986" y="216" width="160" height="36" rx="18" fill="#22d3ee"/><text x="1066" y="241" text-anchor="middle">воронка</text>
+  </g>
+</svg>

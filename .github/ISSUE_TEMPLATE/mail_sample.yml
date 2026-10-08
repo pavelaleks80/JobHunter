@@ -1,0 +1,30 @@
+name: Образец письма
+description: Письмо площадки (hh, Хабр, getmatch…), которое JobHunter не распознаёт
+labels: [mail-parser]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо! Перед вставкой **обезличьте** письмо: удалите имя, телефоны, e-mail и параметры ссылок
+        (`loginkey`, `signature`, `token`, `utm_*`). Адрес вида `https://hh.ru/vacancy/123` можно оставить.
+  - type: input
+    id: sender
+    attributes:
+      label: Отправитель и тема
+      placeholder: "noreply@hh.ru — «Приглашение на собеседование»"
+    validations:
+      required: true
+  - type: dropdown
+    id: meaning
+    attributes:
+      label: Что означает письмо
+      options: [Отклик отправлен, Ответ работодателя, Приглашение, Отказ, Оффер, Подборка вакансий, Другое]
+    validations:
+      required: true
+  - type: textarea
+    id: body
+    attributes:
+      label: Текст письма (обезличенный)
+      render: text
+    validations:
+      required: true

@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jobhunter"
+version = "0.1.0"
+description = "Ежедневный подбор вакансий под ваше резюме: getmatch, Хабр Карьера, подборки hh.ru из почты, сверка требований с резюме, трекер откликов"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "pavelaleks80" }]
+keywords = ["job search", "vacancies", "resume", "hh.ru", "habr career", "getmatch"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Office/Business",
+    "Natural Language :: Russian",
+]
+dependencies = [
+    "requests>=2.31",
+    "certifi",
+    "openpyxl>=3.1",
+    "pyyaml>=6.0",
+    "pydantic>=2.5",
+    "pypdf>=4.0",
+]
+
+[project.optional-dependencies]
+llm = ["openai>=1.30"]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+
+[project.scripts]
+jobhunter = "jobhunter.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["jobhunter*"]
+
+[tool.setuptools.package-data]
+jobhunter = ["examples/*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "UP"]
+ignore = ["B005", "E501"]   # strip() с набором символов — намеренно; длинные строки — русские тексты
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

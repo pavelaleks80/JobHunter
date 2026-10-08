@@ -1,0 +1,76 @@
+# JobHunter — настройки поиска. Скопируйте в workspace/config.yaml (это делает `jobhunter init`).
+# Регулярные выражения пишутся в нижнем регистре, «ё» заменяется на «е». Проверить шаблон: https://regex101.com (flavor: Python)
+
+# ------------------------------------------------------------------ какие вакансии «мои» (по названию)
+scoring:
+  roles:                                   # хотя бы одна роль должна совпасть, иначе вакансия отбрасывается
+    - { pattern: "директор\\w* (по )?(проект|программ|цифров)", points: 30, label: "директор проектов" }
+    - { pattern: "руководител\\w* .{0,40}проект", points: 28, label: "руководитель проектов" }
+    - { pattern: "(head of|руководител\\w*) (pmo|delivery|проектн)", points: 30, label: "PMO / delivery" }
+    - { pattern: "(senior |старш\\w* |ведущ\\w* )?(project|program) manager", points: 25, label: "Project Manager" }
+    - { pattern: "(старш\\w* |ведущ\\w* )?менеджер\\w* (ит-|it-)?(проект|программ)", points: 25, label: "менеджер проектов" }
+    - { pattern: "delivery (manager|lead|director)", points: 25, label: "Delivery" }
+    - { pattern: "product owner|владел\\w* продукт", points: 20, label: "Product Owner" }
+    - { pattern: "product manager|менеджер\\w* (по )?продукт|продуктов\\w* менеджер", points: 18, label: "Product Manager" }
+
+  exclude:                                 # отбросить сразу, даже если роль совпала
+    - "junior"
+    - "младш"
+    - "стаж[её]р"
+    - "intern"
+    - "^ассистент"
+    - "\\bаналитик"
+    - "разработчик"
+    - "developer"
+    - "менеджер по продаж"
+    - "рекрутер"
+
+  boosts:                                  # ключевые слова-усилители: ищутся в названии, компании и описании
+    - { pattern: "информационн\\w* безопасн|\\bиб\\b|security", points: 10, label: "ИБ" }
+    - { pattern: "госзаказ|госсектор|государствен", points: 8, label: "госсектор" }
+    - { pattern: "производств|промышлен|\\berp\\b", points: 8, label: "производство" }
+    - { pattern: "\\bai\\b|\\bии\\b|llm|искусственн\\w* интеллект", points: 4, label: "ИИ" }
+  boosts_cap: 30
+
+  target_companies: ["яндекс", "т-банк", "сбер", "ozon", "касперск"]   # подстроки названия компании
+  target_company_bonus: 10
+  fresh_points: [[1, 10], [3, 7], [7, 4]]  # не старше N дней → баллы
+
+salary:                                    # на руки, в месяц
+  target: 300000
+  floor: 230000
+  low: 200000
+  tax: 0.13
+  currency: RUB
+
+# ------------------------------------------------------------------ источники
+sources:
+  getmatch:
+    enabled: true
+    # параметры getmatch.ru/api/offers: l — город, sp — специализация, pa/sa — формат и зарплата
+    queries:
+      - [["l", "moscow"], ["sp", "project_management"], ["sp", "product_management"], ["pa", "all"], ["sa", "any"]]
+  habr:
+    enabled: true
+    queries: ["руководитель проектов", "менеджер проектов", "product owner", "менеджер продукта", "delivery manager"]
+    location: "c_678"                      # Москва; другие коды — в адресной строке career.habr.com при выборе города
+    pages: 2
+  mail:                                    # подборки hh, отклики Хабра, отказы и ответы hh из вашего ящика
+    enabled: false
+    server: imap.gmail.com
+    folder: INBOX                          # ALL — «Вся почта» (если письма площадок уходят из «Входящих» фильтрами)
+    days: 7
+
+# ------------------------------------------------------------------ сверка с резюме
+matching:
+  mode: rules                              # rules — только правила profile.yaml; hybrid — + ИИ-судья для нераспознанного
+  fit_ok: 75                               # «Подходит» от этой доли закрытых требований
+  fit_partial: 50                          # «Частично»
+  min_recognized: 3                        # меньше распознанных требований → «Проверь вручную»
+
+# ------------------------------------------------------------------ письмо
+email:
+  enabled: true
+  sender_name: JobHunter
+  top_n: 60                                # сколько вакансий в теле письма (остальные — в Excel)
+  top_n_mail_source: 30
