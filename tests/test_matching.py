@@ -21,6 +21,10 @@ def test_english_and_education(matcher):
     assert matcher.classify("Английский язык Upper-Intermediate")[0] == "no"
     assert matcher.classify("Высшее техническое образование")[0] == "yes"
     assert matcher.classify("Высшее экономическое образование")[0] == "partial"
+    assert matcher.classify("Наличие высшего образования")[0] == "yes"
+    # «ценообразование» — не требование к образованию
+    assert "образование" not in (matcher.classify("Понимание ценообразования")[1] or "")
+    assert matcher.classify("Умеешь решать проблемы, а не создавать их")[0] == "soft"
 
 
 def test_match_verdicts(matcher):
