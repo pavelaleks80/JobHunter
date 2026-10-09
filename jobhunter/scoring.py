@@ -25,10 +25,16 @@ class Scorer:
     def _norm(t: str) -> str:
         return (t or "").lower().replace("ё", "е")
 
+    WIDE_LABEL = "нестандартное название"
+
+    def excluded(self, title: str) -> bool:
+        t = self._norm(title)
+        return any(x.search(t) for x in self._excl)
+
     def role_of(self, title: str):
         """(баллы, ярлык) или None — вакансия не наша."""
         t = self._norm(title)
-        if any(x.search(t) for x in self._excl):
+        if self.excluded(title):
             return None
         best = None
         for rx, pts, lab in self._roles:
@@ -52,8 +58,12 @@ class Scorer:
         if self.blacklisted(v.get("company", "")):
             return None
         role = self.role_of(v["title"])
+        wide = False
         if role is None:
-            return None
+            # широкий поиск — только там, где есть описание для сверки (у подборок hh его нет)
+            if not self.cfg.wide or v.get("source") == "hh" or self.excluded(v["title"]):
+                return None
+            role, wide = (self.cfg.wide_points, self.WIDE_LABEL), True
         pts, why = role[0], [f"роль: {role[1]} +{role[0]}"]
 
         blob = self._norm(f"{v['title']} {v['company']} {v.get('text', '')}")
@@ -102,4 +112,4 @@ class Scorer:
             why.append(f"свежая ({age} дн.) +{fp}")
 
         return {"score": min(pts, 100), "role": role[1], "tags": ", ".join(tags), "net_top": net,
-                "why": "; ".join(why), "age_days": age}
+                "why": "; ".join(why), "age_days": age, "wide": wide}

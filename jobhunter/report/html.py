@@ -48,7 +48,8 @@ def build_html(rows, status, run_dt, top_n=60, top_n_mail=30, funnel=None, salar
             cls = "v0" if m["verdict"] == "Подходит" else "v1"
             badge = "<b>🆕</b> " if v["is_new"] else ""
             also = also_text(v, SRC_NAME)
-            extra = (f" · также: {escape(also)}" if also else "") + (" · ✉ письмо готово" if v.get("cover") else "")
+            extra = (f" · также: {escape(also)}" if also else "") + (" · ✉ письмо готово" if v.get("cover") else "") \
+                + (" · <b>нестандартное название</b> — подошла по описанию" if v.get("wide") else "")
             h.append(f"<tr class='{cls}'><td class='s'>{m['fit']}%<br><span class='mut'>{m['verdict']}</span></td>"
                      f"<td>{badge}<a href='{escape(v['url'])}'>{escape(v['title'])}</a><br>{escape(v['company'])}<br>"
                      f"<span class='mut'>{SRC_NAME.get(v['source'])} · {escape(v['published'])} · балл {v['score']}{extra}</span></td>"

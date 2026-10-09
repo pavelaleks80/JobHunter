@@ -75,6 +75,27 @@ def _judge(con, rows, matcher, settings, profile, log):
     return f"ИИ-судья: дооценено {n} вакансий"
 
 
+def wide_precheck(rows, matcher):
+    """Широкий поиск, шаг 1 (до загрузки описаний): критичный пробел прямо в названии — отбросить сразу."""
+    keep, dropped = [], 0
+    for v in rows:
+        if v.get("wide"):
+            verdict, why = matcher.classify(v["title"])
+            if verdict == "no" and why in matcher.hard_notes:
+                dropped += 1
+                continue
+        keep.append(v)
+    return keep, dropped
+
+
+def wide_filter(rows, wide_min="Подходит"):
+    """Широкий поиск, шаг 2 (после сверки): оставить вердикт не хуже wide_min. -> (rows, проверено, подошло)."""
+    ok = ("Подходит",) if wide_min == "Подходит" else ("Подходит", "Частично")
+    checked = sum(1 for v in rows if v.get("wide"))
+    keep = [v for v in rows if not v.get("wide") or v["match"]["verdict"] in ok]
+    return keep, checked, sum(1 for v in keep if v.get("wide"))
+
+
 def run(settings, send_mail=True, all_new=False, echo=print):
     settings.ensure_dirs()
     logging.basicConfig(filename=settings.log_dir / "jobhunter.log", level=logging.INFO, encoding="utf-8",
@@ -120,7 +141,10 @@ def run(settings, send_mail=True, all_new=False, echo=print):
             dropped += 1
             continue
         rows.append({**v, **sc})
-    echo(f"Собрано {len(raw)}, подходит по названию {len(rows)}, отброшено {dropped}")
+    rows, wide_hard = wide_precheck(rows, matcher)
+    n_wide = sum(1 for v in rows if v.get("wide"))
+    echo(f"Собрано {len(raw)}, подходит по названию {len(rows) - n_wide}, на проверку по описанию (широкий поиск) "
+         f"{n_wide}, отброшено {dropped + wide_hard}")
 
     known = db.known_keys(con)
     index = db.applied_index(con)
@@ -137,6 +161,9 @@ def run(settings, send_mail=True, all_new=False, echo=print):
         msg = _judge(con, rows, matcher, settings, profile, log)
         status["ai"] = (not msg.startswith("ИИ-судья: ошибка"), msg)
         echo(msg)
+    rows, w_checked, w_kept = wide_filter(rows, settings.scoring.wide_min)
+    if w_checked:
+        echo(f"Широкий поиск: сверено с резюме {w_checked}, подошло {w_kept} (в отчёте — «нестандартное название»)")
     db.upsert_vacancies(con, rows, run_date)
 
     rows.sort(key=lambda v: (VERDICT_ORDER[v["match"]["verdict"]], -(v["match"]["fit"] or 0), -v["score"]))

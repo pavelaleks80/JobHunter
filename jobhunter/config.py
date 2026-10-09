@@ -45,6 +45,11 @@ class ScoringCfg(BaseModel):
     target_company_bonus: int = 10
     blacklist_companies: list[str] = Field(default_factory=list)   # подстроки: такие компании не показываем
     fresh_points: list[tuple[int, int]] = Field(default_factory=lambda: [(1, 10), (3, 7), (7, 4)])
+    # Широкий поиск: название не совпало с ролью (и не в exclude) — всё равно загрузить описание и сверить с профилем;
+    # в отчёт — только с вердиктом не хуже wide_min, с пометкой «нестандартное название» и баллом роли wide_points.
+    wide: bool = True
+    wide_points: int = 10
+    wide_min: Literal["Подходит", "Частично"] = "Подходит"   # с каким вердиктом такие вакансии попадают в отчёт
 
 
 class GetmatchCfg(BaseModel):
