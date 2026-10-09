@@ -12,6 +12,7 @@ import logging
 import time
 from collections import Counter
 from datetime import datetime
+from pathlib import Path
 
 from . import cover, dedup, sources
 from .matching import Matcher, extract
@@ -19,7 +20,7 @@ from .net import session
 from .profile.schema import load_profile
 from .report import VERDICT_ORDER, build_html, write_excel
 from .scoring import Scorer
-from .tracker import db, excel_marks, mail_events
+from .tracker import db, excel_marks, mail_events, xlsx_import
 
 MAX_FAILS_IN_ROW = 3        # после стольких ошибок подряд сайт в этом запуске больше не опрашиваем
 
@@ -89,6 +90,14 @@ def run(settings, send_mail=True, all_new=False, echo=print):
 
     n_marks = excel_marks.harvest(con, settings.output_dir)
     echo(f"Отметки из Excel: новых {n_marks}")
+    ti = settings.tracker_import
+    if ti.enabled:
+        try:
+            n_rows, n_changed = xlsx_import.import_tracker(con, ti)
+            echo(f"[OK] ваш трекер {Path(ti.path).name}: строк {n_rows}, изменений в воронке {n_changed}")
+        except Exception as e:          # noqa: BLE001 — трекер не должен ронять запуск
+            echo(f"[!!] ваш трекер: {e}")
+            log.info("tracker_import: %s", e)
 
     raw, status = sources.collect(s, settings)
     if settings.sources.mail.enabled:

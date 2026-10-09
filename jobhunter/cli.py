@@ -7,6 +7,7 @@ cli.py — команда `jobhunter` (или `python -m jobhunter`).
   jobhunter run                  собрать вакансии, сверить с профилем, Excel + письмо  (--no-email, --all-new)
   jobhunter applied <url> [...]  отметить отклик (--status invited|rejected|offer|ignored|viewed)
   jobhunter stats                воронка откликов
+  jobhunter import-tracker       перенести отклики из вашего Excel-трекера (секция tracker_import в config.yaml)
   jobhunter salaries             зарплаты по ролям и неделям (верх вилки на руки)
   jobhunter cover <url> [...]    сопроводительное письмо под вакансию (--fit N — для N лучших без отклика)
   jobhunter check                проверить настройки: профиль, почта, LLM, доступность сайтов
@@ -117,6 +118,28 @@ def cmd_stats(args):
     return 0
 
 
+def cmd_import_tracker(args):
+    from .tracker import db, xlsx_import
+    s = load_settings(args.workspace)
+    ti = s.tracker_import
+    if not ti.path:
+        print("Не задан путь: секция tracker_import в config.yaml (см. docs/setup.md, «Свой трекер откликов»)")
+        return 1
+    con = db.connect(s.db_path)
+    try:
+        n_rows, n_changed = xlsx_import.import_tracker(con, ti)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"[!!] {e}")
+        return 1
+    print(f"Строк в трекере: {n_rows}; изменений в воронке: {n_changed}")
+    f = db.funnel(con)
+    print("Воронка: " + ", ".join(f"{db.STATUS_RU[k]} {f['by_status'].get(k, 0)}"
+                                  for k in ("applied", "viewed", "invited", "offer", "rejected", "ignored")))
+    if not ti.enabled:
+        print("Чтобы читать трекер при каждом запуске: tracker_import → enabled: true в config.yaml")
+    return 0
+
+
 def cmd_salaries(args):
     from .tracker import db
     s = load_settings(args.workspace)
@@ -214,7 +237,8 @@ def cmd_check(args):
             r = sess.get(url, timeout=s.http_timeout)
             line(r.ok, f"{name}: HTTP {r.status_code}")
         except Exception as e:  # noqa: BLE001
-            line(False, f"{name}: {str(e)[:120]} (Хабр обычно недоступен через VPN)")
+            hint = " (Хабр обычно недоступен через VPN)" if "Хабр" in name else " (проверьте интернет)"
+            line(False, f"{name}: {str(e)[:120]}{hint}")
     if s.sources.mail.enabled:
         import imaplib
         m = s.sources.mail
@@ -227,6 +251,14 @@ def cmd_check(args):
             line(True, f"почта IMAP {m.server}: вход OK, папка {m.folder} ({name})")
         except Exception as e:  # noqa: BLE001
             line(False, f"почта IMAP: {str(e)[:160]}")
+    ti = s.tracker_import
+    if ti.enabled:
+        from .tracker import xlsx_import
+        try:
+            rows = xlsx_import.read_rows(ti)
+            line(bool(rows), f"ваш трекер: {Path(ti.path).name}, лист «{ti.sheet}», строк с откликами {len(rows)}")
+        except Exception as e:  # noqa: BLE001
+            line(False, f"ваш трекер: {e}")
     c = s.email
     smtp_missing = [k for k in (c.login_env, c.password_env) if not s.secret(k)]
     line(not smtp_missing or not c.enabled,
@@ -254,6 +286,7 @@ def main(argv=None):
     a.add_argument("--title")
     a.add_argument("--company")
     sub.add_parser("stats", help="воронка откликов")
+    sub.add_parser("import-tracker", help="отклики из вашего Excel-трекера")
     sa = sub.add_parser("salaries", help="аналитика зарплат")
     sa.add_argument("--days", type=int, default=90)
     c = sub.add_parser("cover", help="сопроводительное письмо")
@@ -271,7 +304,7 @@ def main(argv=None):
         except AttributeError:
             pass
     return {"init": cmd_init, "profile": cmd_profile, "run": cmd_run, "applied": cmd_applied,
-            "stats": cmd_stats, "salaries": cmd_salaries, "cover": cmd_cover, "check": cmd_check}[args.cmd](args)
+            "stats": cmd_stats, "import-tracker": cmd_import_tracker, "salaries": cmd_salaries, "cover": cmd_cover, "check": cmd_check}[args.cmd](args)
 
 
 if __name__ == "__main__":

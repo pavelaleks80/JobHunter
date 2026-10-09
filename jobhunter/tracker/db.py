@@ -250,6 +250,8 @@ def funnel(con) -> dict:
         d[a["status"]] = d.get(a["status"], 0) + 1
     waits = []
     for a in apps:
+        if (a["origin"] or "").startswith("xlsx:") and (a["updated_at"] or "")[:10] == (a["applied_at"] or "")[:10]:
+            continue                        # из своего трекера: дата ответа неизвестна
         if a["applied_at"] and a["status"] in ("viewed", "invited", "offer", "rejected") and a["updated_at"]:
             try:
                 d0 = datetime.strptime(a["applied_at"][:10], "%Y-%m-%d")

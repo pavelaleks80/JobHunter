@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jobhunter"
-version = "0.2.2"
+version = "0.3.0"
 description = "Ежедневный подбор вакансий под ваше резюме: getmatch, Хабр Карьера, подборки hh.ru из почты, сверка требований с резюме, трекер откликов"
 readme = "README.md"
 license = { file = "LICENSE" }

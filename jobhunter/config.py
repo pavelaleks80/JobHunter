@@ -95,6 +95,29 @@ class LLMCfg(BaseModel):
     timeout: int = 120
 
 
+class ImportColumns(BaseModel):
+    """Буквы колонок вашего трекера. Пусто — колонки нет."""
+    title: str = "A"
+    url: str = "B"
+    company: str = ""
+    date: str = ""
+    viewed: str = ""          # непусто → «Ответили» (дата просмотра, контакт с HR); можно несколько: "H,I"
+    invited: str = ""         # непусто → «Приглашение» (собеседование); можно несколько: "J,K"
+    result: str = ""          # текст итога: проверяется регулярками rejected / ignored / offer
+
+
+class TrackerImportCfg(BaseModel):
+    """Отклики из вашего собственного Excel-трекера (только чтение)."""
+    enabled: bool = False
+    path: str = ""
+    sheet: str = "Отклики"
+    first_row: int = 2
+    columns: ImportColumns = ImportColumns()
+    rejected: str = r"отказ|взяли другого|не подход"
+    ignored: str = r"снят|закрыт|дубл"
+    offer: str = r"оффер|offer|выхожу"
+
+
 class CoverCfg(BaseModel):
     """Сопроводительные письма (jobhunter cover)."""
     words: int = 170                   # примерная длина
@@ -125,6 +148,7 @@ class Settings(BaseModel):
     llm: LLMCfg = LLMCfg()
     matching: MatchingCfg = MatchingCfg()
     cover: CoverCfg = CoverCfg()
+    tracker_import: TrackerImportCfg = TrackerImportCfg()
     env: dict[str, str] = Field(default_factory=dict, exclude=True)
 
     # ------------------------------------------------------------ пути
