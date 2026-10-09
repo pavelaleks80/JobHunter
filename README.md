@@ -91,6 +91,9 @@ pip install -e .
 jobhunter init
 ```
 
+> **Windows:** если `jobhunter` «не является внутренней или внешней командой» — пишите `python -m jobhunter init`
+> (и так же остальные команды) или см. [docs/setup.md](docs/setup.md#windows-jobhunter-не-является-внутренней-или-внешней-командой).
+
 Дальше:
 
 1. Положите резюме (`.pdf`, `.docx` или `.txt`) в `workspace/resume/`.

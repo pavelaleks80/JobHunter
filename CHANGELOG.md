@@ -2,6 +2,8 @@
 
 ## 0.2.1 — 2026-10-08
 
+- Документация: что делать на Windows, если команда `jobhunter` не находится (`python -m jobhunter …` или
+  папка `Scripts` в PATH) — [docs/setup.md](docs/setup.md).
 - Документация: пошаговая инструкция «Пароль приложения для почты» — Gmail (двухэтапная аутентификация,
   создание пароля, настройка IMAP/SMTP, проверка, разбор ошибок, отзыв), Mail.ru, Яндекс —
   [docs/app-passwords.md](docs/app-passwords.md); ссылки из README, setup, mail и `.env`.

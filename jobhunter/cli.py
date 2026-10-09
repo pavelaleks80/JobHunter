@@ -1,6 +1,7 @@
 """
 cli.py — команда `jobhunter` (или `python -m jobhunter`).
 
+  (Windows без Scripts в PATH: python -m jobhunter <команда>)
   jobhunter init                 создать workspace/: config.yaml, .env, папка resume/
   jobhunter profile              резюме (PDF/DOCX/TXT) → profile.yaml через LLM  (--template — заготовка без LLM)
   jobhunter run                  собрать вакансии, сверить с профилем, Excel + письмо  (--no-email, --all-new)

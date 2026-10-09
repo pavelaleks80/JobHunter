@@ -14,6 +14,35 @@ pip install -e .
 
 Проверка: `jobhunter --help`.
 
+### Windows: «"jobhunter" не является внутренней или внешней командой»
+
+Пакет установлен, но Windows не находит программу `jobhunter.exe`. Так бывает, если Python ставили новым
+установщиком с python.org (Python Install Manager) или через Anaconda без добавления в PATH: `pip` кладёт
+`jobhunter.exe` в папку `Scripts` выбранного Python, а её нет в PATH.
+
+**Самый простой выход** — запускать через Python, это работает всегда:
+
+```bash
+python -m jobhunter check
+python -m jobhunter run --no-email
+```
+
+Любую команду из документации можно писать так: вместо `jobhunter …` — `python -m jobhunter …`.
+
+**Если хочется писать просто `jobhunter`**, добавьте папку `Scripts` в PATH:
+
+1. Узнайте путь к ней:
+   ```bash
+   python -c "import sysconfig; print(sysconfig.get_path('scripts'))"
+   ```
+   Например: `C:\Users\<имя>\AppData\Local\Python\pythoncore-3.14-64\Scripts`.
+2. «Пуск» → наберите «переменные среды» → **«Изменение переменных среды текущего пользователя»** →
+   строка `Path` → **«Изменить»** → **«Создать»** → вставьте путь → OK.
+3. Откройте **новое** окно командной строки — в старом PATH не обновится.
+
+Если используете виртуальное окружение (`.venv`), достаточно его активировать (`.venv\Scripts\activate`) —
+тогда `jobhunter` находится без правки PATH.
+
 ## 2. Рабочая папка
 
 ```bash
