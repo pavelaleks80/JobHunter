@@ -57,7 +57,7 @@ IMAP_USER=you@gmail.com
 IMAP_PASSWORD=abcd efgh ijkl mnop
 ```
 
-и в `workspace/config.yaml`:
+и в `workspace/config.yaml` в разделе `sources:` → `mail:` поставьте `enabled: true`:
 
 ```yaml
 sources:

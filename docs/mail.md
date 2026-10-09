@@ -27,7 +27,13 @@ getmatch об откликах писем не присылает — такие
    IMAP_USER=you@gmail.com
    IMAP_PASSWORD=abcd efgh ijkl mnop
    ```
-3. В `workspace/config.yaml`: `sources.mail.enabled: true`.
+3. В `workspace/config.yaml` найдите раздел `mail:` внутри `sources:` и поставьте `enabled: true`
+   (в документации это называется `sources.mail.enabled`, см. [как читать такие записи](setup.md#как-читать-запись-вида-sourcesmailenabled)):
+   ```yaml
+   sources:
+     mail:
+       enabled: true
+   ```
 4. На hh.ru настройте подписку на вакансии (автопоиск) с отправкой на эту почту.
 5. `jobhunter check` — строка «почта IMAP: вход OK».
 

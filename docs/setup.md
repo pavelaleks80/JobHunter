@@ -90,6 +90,39 @@ jobhunter profile
 
 ## 5. Что искать — `workspace/config.yaml`
 
+### Как читать запись вида `sources.mail.enabled`
+
+В документации параметры называются **путём через точку**. Такой строки в `config.yaml` нет — точка означает
+«раздел внутри раздела». В файле вложенность задаётся **отступами** (два пробела на уровень):
+
+| В документации | В `config.yaml` |
+|---|---|
+| `sources.mail.enabled: true` | раздел `sources:` → внутри него `mail:` → внутри него `enabled: true` |
+
+```yaml
+sources:                 # уровень 1, без отступа
+  getmatch:
+    enabled: true
+  habr:
+    enabled: true
+  mail:                  # уровень 2 — два пробела
+    enabled: true        # уровень 3 — четыре пробела: это и есть sources.mail.enabled
+    folder: ALL          # sources.mail.folder
+    days: 7              # sources.mail.days
+```
+
+Ещё примеры: `salary.target` — строка `target:` в разделе `salary:`; `matching.mode` — строка `mode:` в разделе
+`matching:`; `scoring.blacklist_companies` — строка `blacklist_companies:` в разделе `scoring:`.
+
+Правила правки:
+
+- меняйте только значение после двоеточия, отступы не трогайте — от них зависит, к какому разделу относится строка;
+- отступы — **пробелами**, не табуляцией;
+- текст после `#` — комментарий, его можно не трогать;
+- после правки запустите `python -m jobhunter check` (или `jobhunter check`) — если файл испорчен, он скажет об ошибке.
+
+### Главные параметры
+
 Главное:
 
 - `scoring.roles` — регулярные выражения по названию вакансии. Вакансия без совпадения отбрасывается.
