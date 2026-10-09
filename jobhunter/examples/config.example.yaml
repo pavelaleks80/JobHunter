@@ -8,7 +8,7 @@ scoring:
     - { pattern: "руководител\\w* .{0,40}проект", points: 28, label: "руководитель проектов" }
     - { pattern: "(head of|руководител\\w*) (pmo|delivery|проектн)", points: 30, label: "PMO / delivery" }
     - { pattern: "(senior |старш\\w* |ведущ\\w* )?(project|program) manager", points: 25, label: "Project Manager" }
-    - { pattern: "(старш\\w* |ведущ\\w* )?менеджер\\w* (ит-|it-)?(проект|программ)", points: 25, label: "менеджер проектов" }
+    - { pattern: "(старш\\w* |ведущ\\w* )?менеджер\\w* (по )?(ит-|it-)?(проект|программ)", points: 25, label: "менеджер проектов" }
     - { pattern: "delivery (manager|lead|director)", points: 25, label: "Delivery" }
     - { pattern: "product owner|владел\\w* продукт", points: 20, label: "Product Owner" }
     - { pattern: "product manager|менеджер\\w* (по )?продукт|продуктов\\w* менеджер", points: 18, label: "Product Manager" }
@@ -42,6 +42,11 @@ scoring:
   wide: true
   wide_points: 10                          # балл за роль у таких вакансий (у распознанных ролей — 18–30)
   wide_min: Подходит                       # «Частично» — показывать больше, но с заметным шумом
+  # Какие названия вообще брать в широкий поиск (регулярки по названию, нижний регистр). Сверка с резюме смотрит на
+  # ключевые слова, а не на роль: без этого фильтра «настройка CI/CD» у DevOps-инженера засчитается руководителю
+  # проектов. Пример ниже — для управленческих ролей; инженеру нужен свой набор.
+  wide_require: "руковод|начальник|директор|head|\\blead\\b|лидер|менеджер|manager|owner|владел|chief|чемпион"
+  wide_exclude: "инженер|engineer|архитектор|architect|администратор|разработчик|developer|devops|\\bsre\\b|\\bqa\\b|aqa|тестиров|писател|writer|аналитик|analyst|исследовател|research|консультант|специалист|coach|технический лидер|tech ?lead|\\bgo\\b|golang|продаж|sales|key account|ключевыми клиентами|развитию бизнеса|документооборот"
 
 salary:                                    # на руки, в месяц
   target: 300000

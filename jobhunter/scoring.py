@@ -20,6 +20,8 @@ class Scorer:
         self._boosts = [(re.compile(b.pattern, re.I), b.points, b.label or b.pattern) for b in cfg.boosts]
         self._companies = [c.lower() for c in cfg.target_companies]
         self._black = [c.lower() for c in cfg.blacklist_companies]
+        self._wide_req = re.compile(cfg.wide_require, re.I) if cfg.wide_require else None
+        self._wide_excl = re.compile(cfg.wide_exclude, re.I) if cfg.wide_exclude else None
 
     @staticmethod
     def _norm(t: str) -> str:
@@ -62,6 +64,9 @@ class Scorer:
         if role is None:
             # широкий поиск — только там, где есть описание для сверки (у подборок hh его нет)
             if not self.cfg.wide or v.get("source") == "hh" or self.excluded(v["title"]):
+                return None
+            t = self._norm(v["title"])
+            if (self._wide_req and not self._wide_req.search(t)) or (self._wide_excl and self._wide_excl.search(t)):
                 return None
             role, wide = (self.cfg.wide_points, self.WIDE_LABEL), True
         pts, why = role[0], [f"роль: {role[1]} +{role[0]}"]

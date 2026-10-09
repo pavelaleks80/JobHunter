@@ -50,6 +50,8 @@ class ScoringCfg(BaseModel):
     wide: bool = True
     wide_points: int = 10
     wide_min: Literal["Подходит", "Частично"] = "Подходит"   # с каким вердиктом такие вакансии попадают в отчёт
+    wide_require: str = ""    # регулярка: в названии ДОЛЖНО быть (например, управленческое слово); пусто — без условия
+    wide_exclude: str = ""    # регулярка: такие названия в широкий поиск не берём (чужие роли)
 
 
 class GetmatchCfg(BaseModel):

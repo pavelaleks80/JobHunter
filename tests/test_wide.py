@@ -23,6 +23,26 @@ def test_scorer_wide(settings):
     assert Scorer(settings.scoring, settings.salary).score(_v("Лидер направления"), date(2026, 10, 9)) is None
 
 
+def test_wide_title_gate(settings):
+    """Фильтр названий широкого поиска из примера config.yaml: управленческие — да, технические роли — нет."""
+    assert settings.scoring.wide_require and settings.scoring.wide_exclude        # пример конфигурации их задаёт
+    s = Scorer(settings.scoring, settings.salary)
+    d = date(2026, 10, 9)
+    for t in ("Начальник отдела CRM", "Руководитель группы внедрения", "Старший менеджер по развитию облачных продуктов"):
+        assert s.score(_v(t), d)["wide"], t
+    for t in ("Senior DevOps-инженер", "Старший технический писатель", "Архитектор ИБ", "Системный администратор",
+              "Технический лидер Go", "AQA", "Ведущий консультант Directum RX", "QA-инженер"):
+        assert s.score(_v(t), d) is None, t
+    settings.scoring.wide_require = settings.scoring.wide_exclude = ""             # без фильтра — берётся всё
+    assert Scorer(settings.scoring, settings.salary).score(_v("Архитектор ИБ"), d)["wide"]
+
+
+def test_role_menedzher_po_proektam(settings):
+    s = Scorer(settings.scoring, settings.salary)
+    assert s.role_of("Менеджер по проектам")[1] == "менеджер проектов"
+    assert s.role_of("Ведущий менеджер по ИТ-проектам")[1] == "менеджер проектов"
+
+
 def test_wide_precheck_drops_hard_gap_in_title(matcher):
     rows = [{"title": "Руководитель ML-платформы", "wide": True}, {"title": "Лидер направления", "wide": True},
             {"title": "Руководитель ML-проектов", "wide": False}]                     # распознанная роль не трогается
