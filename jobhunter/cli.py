@@ -41,11 +41,15 @@ def cmd_init(args):
             continue
         shutil.copy(ex / src, target)
         print(f"  создан:   {target}")
+    from .tracker import template
+    tpl = ws / template.TEMPLATE_NAME
+    print(f"  {'создан:  ' if template.create(tpl) else 'уже есть:'} {tpl}  (шаблон для ваших откликов)")
     print(f"\nДальше:\n  1. положите резюме (.pdf/.docx/.txt) в {ws / 'resume'}\n"
           f"  2. заполните {ws / '.env'} (почта и ключ LLM)\n"
           f"  3. jobhunter profile   → проверьте {ws / 'profile.yaml'}\n"
           f"  4. отредактируйте роли и ключевые слова в {ws / 'config.yaml'}\n"
-          f"  5. jobhunter check  →  jobhunter run")
+          f"  5. jobhunter check  →  jobhunter run\n"
+          f"  Ведёте отклики вручную? Записывайте их в «{template.TEMPLATE_NAME}» и включите tracker_import → enabled: true")
     return 0
 
 

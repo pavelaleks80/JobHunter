@@ -71,3 +71,33 @@ def test_open_file_is_read_from_memory(tmp_path, monkeypatch):
     monkeypatch.setattr(xlsx_import.openpyxl, "load_workbook", lambda f, **kw: calls.append(type(f).__name__) or real(f, **kw))
     xlsx_import.read_rows(_cfg(p))
     assert calls == ["BytesIO"]
+
+
+def test_template_roundtrip_with_default_settings(tmp_path):
+    """Шаблон «Мои отклики.xlsx» читается настройками по умолчанию — достаточно enabled: true."""
+    from jobhunter.config import load_settings
+    from jobhunter.tracker import template
+    (tmp_path / "config.yaml").write_text("tracker_import:\n  enabled: true\n", encoding="utf-8")
+    s = load_settings(tmp_path)
+    p = tmp_path / template.TEMPLATE_NAME
+    assert s.tracker_import.path == str(p)                            # относительный путь — от workspace
+    assert template.create(p) and not template.create(p)              # второй раз не перезаписывает
+    wb = openpyxl.load_workbook(p)
+    ws = wb["Отклики"]
+    assert [ws.cell(1, i).value for i in range(1, 9)] == ["Вакансия", "Ссылка", "Компания", "Дата отклика", "Ответили",
+                                                          "Собеседование", "Итог", "Заметки"]
+    assert xlsx_import.read_rows(s.tracker_import) == []              # пустой шаблон — ни одного отклика
+    ws.append(["Руководитель проектов", "https://hh.ru/vacancy/1?x=1", "Ромашка", datetime(2026, 10, 9)])
+    ws.append(["Product Owner", "https://getmatch.ru/vacancies/2-po", "Лютик", datetime(2026, 10, 1), "звонил HR",
+               "12.10 с командой", "Отказ", "не моё"])
+    wb.save(p)
+    rows = xlsx_import.read_rows(s.tracker_import)
+    assert [(r["title"], r["applied"]) for r in rows] == [("Руководитель проектов", "2026-10-09"), ("Product Owner", "2026-10-01")]
+    assert rows[1]["statuses"] == [("viewed", None), ("invited", None), ("rejected", None)]
+
+
+def test_init_creates_template(tmp_path, capsys):
+    from jobhunter.cli import main
+    assert main(["--workspace", str(tmp_path), "init"]) == 0
+    assert (tmp_path / "Мои отклики.xlsx").exists() and (tmp_path / "config.yaml").exists()
+    assert "Мои отклики.xlsx" in capsys.readouterr().out

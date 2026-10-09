@@ -96,20 +96,20 @@ class LLMCfg(BaseModel):
 
 
 class ImportColumns(BaseModel):
-    """Буквы колонок вашего трекера. Пусто — колонки нет."""
+    """Буквы колонок вашего трекера (по умолчанию — как в шаблоне «Мои отклики.xlsx»). Пусто — колонки нет."""
     title: str = "A"
     url: str = "B"
-    company: str = ""
-    date: str = ""
-    viewed: str = ""          # непусто → «Ответили» (дата просмотра, контакт с HR); можно несколько: "H,I"
-    invited: str = ""         # непусто → «Приглашение» (собеседование); можно несколько: "J,K"
-    result: str = ""          # текст итога: проверяется регулярками rejected / ignored / offer
+    company: str = "C"
+    date: str = "D"
+    viewed: str = "E"         # непусто → «Ответили» (дата просмотра, контакт с HR); можно несколько: "H,I"
+    invited: str = "F"        # непусто → «Приглашение» (собеседование); можно несколько: "J,K"
+    result: str = "G"         # текст итога: проверяется регулярками rejected / ignored / offer
 
 
 class TrackerImportCfg(BaseModel):
     """Отклики из вашего собственного Excel-трекера (только чтение)."""
     enabled: bool = False
-    path: str = ""
+    path: str = "Мои отклики.xlsx"      # относительный путь — от папки workspace
     sheet: str = "Отклики"
     first_row: int = 2
     columns: ImportColumns = ImportColumns()
@@ -224,4 +224,7 @@ def load_settings(workspace: Path | None = None) -> Settings:
     raw["workspace"] = ws
     s = Settings(**raw)
     s.env = load_env(ws / ".env")
+    p = Path(s.tracker_import.path).expanduser()
+    if s.tracker_import.path and not p.is_absolute():
+        s.tracker_import.path = str(ws / p)
     return s

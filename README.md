@@ -104,6 +104,9 @@ jobhunter init
 3. Постройте профиль и просмотрите его: `jobhunter profile`.
 4. Поправьте роли, зарплату и ключевые слова в `workspace/config.yaml`.
 5. Проверьте настройки и запустите: `jobhunter check`, затем `jobhunter run`.
+   Ведёте отклики вручную — записывайте их в шаблон `workspace/Мои отклики.xlsx` (его создаёт `init`) и включите
+   `tracker_import` → `enabled: true`: уже откликнутые вакансии перестанут приходить в письме
+   ([подробнее](docs/setup.md#5а-свой-трекер-откликов-необязательно)).
 6. Поставьте ежедневный запуск — [docs/scheduling.md](docs/scheduling.md) (Планировщик Windows, cron, Docker).
 
 Подробно — в [docs/setup.md](docs/setup.md).
