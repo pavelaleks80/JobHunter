@@ -48,6 +48,17 @@ def test_hh_rejection_and_response():
                             "Банк Тест. Центральный офис", "rejected", "hh")]
     r = me.parse_message(_msg("noreply@hh.ru", "Вам написали по вакансии Менеджер по проектам", HH_RESPONSE))
     assert r["events"][0][3] == "viewed" and r["events"][0][2] == "ТестБанк. Головной офис"
+    nbsp = "Работодатель не готов пригласить вас на собеседование"        # так hh пишет тему иногда
+    assert me.parse_message(_msg("noreply@hh.ru", nbsp, HH_REJECT))["kind"] == "hh_rejected"
+
+
+def test_hh_searches_stats():
+    r = me.parse_message(_msg('"hh.ru" <noreply@hh.ru>', "Вакансии по подписке: РП — название", HH_SUB))
+    assert r["search"] == "РП — название"
+    full = {"Все вакансии": [5, set(range(100)), 5], "РП": [3, {"1", "2"}, 0]}
+    s = me.searches_stats(full)
+    assert "«Все вакансии» 5 писем/100 вак. (⚠ 5 из 5 писем по 20" in s and "«РП» 3 писем/2 вак." in s
+    assert "⚠" not in s.split("«РП»")[1] and me.searches_stats({}) == ""
 
 
 def test_habr_applied_plain_and_html():

@@ -27,6 +27,7 @@ from urllib.parse import unquote
 from ..sources import vacancy
 
 _TAG = re.compile(r"<[^>]+>")
+HH_LETTER_CAP = 20          # больше вакансий hh в одно письмо автопоиска не кладёт (замер: 35 писем из 35 — ровно 20)
 
 
 def _txt(s: str) -> str:
@@ -136,6 +137,7 @@ KINDS = [
 
 
 def classify(sender: str, subject: str) -> str | None:
+    subject = re.sub(r"\s+", " ", subject or "")      # в темах hh бывает неразрывный пробел (U+00A0): «не готов»
     for kind, frm, subj in KINDS:
         if re.search(frm, sender or "", re.I) and re.search(subj, subject or "", re.I):
             return kind
@@ -172,6 +174,7 @@ def parse_message(msg) -> dict:
         return out
     body = _body(msg)
     if kind == "hh_subscription":
+        out["search"] = re.sub(r"^Вакансии по подписке:\s*", "", re.sub(r"\s+", " ", subj)).strip() or "?"
         for vid, title, company, city, a, b in parse_hh_subscription(body):
             out["vacancies"].append(vacancy("hh", vid, title, company, f"https://hh.ru/vacancy/{vid}", day, a, b,
                                             "RUB", None, location=city,
@@ -215,7 +218,7 @@ def fetch(settings, days: int | None = None) -> dict:
     days = days or cfg.days
     since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")
     imap = imaplib.IMAP4_SSL(settings.secret("IMAP_SERVER") or cfg.server, 993, ssl_context=ssl.create_default_context(), timeout=60)
-    vac, events, counts = {}, [], {}
+    vac, events, counts, searches = {}, [], {}, {}
     try:
         imap.login(user, pwd.replace(" ", ""))
         select_folder(imap, cfg.folder)
@@ -230,6 +233,11 @@ def fetch(settings, days: int | None = None) -> dict:
                 continue
             r = parse_message(email.message_from_bytes(raw))
             counts[r["kind"] or "other"] = counts.get(r["kind"] or "other", 0) + 1
+            if r.get("search"):
+                st = searches.setdefault(r["search"], [0, set(), 0])   # писем, id вакансий, писем «под потолок»
+                st[0] += 1
+                st[1].update(v["id"] for v in r["vacancies"])
+                st[2] += len(r["vacancies"]) >= HH_LETTER_CAP
             for v in r["vacancies"]:
                 vac[v["id"]] = v
             events += [(*e, r["day"]) for e in r["events"]]
@@ -241,5 +249,21 @@ def fetch(settings, days: int | None = None) -> dict:
     names = {"hh_subscription": "подборок hh", "hh_rejected": "отказов", "hh_response": "ответов работодателей",
              "habr_applied": "откликов Хабра", "other": "прочих"}
     stats = f"писем за {days} дн.: " + ", ".join(f"{names.get(k, k)} {n}" for k, n in counts.items()) + \
-            f"; вакансий из подборок {len(vac)}"
+            f"; вакансий из подборок {len(vac)}" + searches_stats(searches)
     return {"vacancies": list(vac.values()), "events": events, "stats": stats}
+
+
+def searches_stats(searches: dict) -> str:
+    """Сводка по автопоискам hh: «Название» писем/вакансий; предупреждение, если письма приходят «под потолок».
+
+    hh кладёт в одно письмо автопоиска не больше HH_LETTER_CAP вакансий — остальное не видно. Если почти каждое письмо
+    заполнено до потолка, запрос слишком широкий: его стоит сузить или разбить на два (docs/hh.md)."""
+    if not searches:
+        return ""
+    parts = []
+    for name, (letters, ids, full) in sorted(searches.items()):
+        s = f"«{name}» {letters} писем/{len(ids)} вак."
+        if letters >= 2 and full / letters >= 0.8:
+            s += f" (⚠ {full} из {letters} писем по {HH_LETTER_CAP} — часть вакансий не видна, сузьте запрос)"
+        parts.append(s)
+    return "; автопоиски hh: " + ", ".join(parts)
